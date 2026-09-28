@@ -1,5 +1,14 @@
 export default async function handler(req, res) {
-    // Hanya izinkan metode POST
+    // 1. Izinkan akses dari domain luar (CORS Header)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Tangani preflight request dari browser
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -12,7 +21,7 @@ export default async function handler(req, res) {
 
         const lastMessage = messages[messages.length - 1].content;
 
-        // 1. Melakukan pencarian real-time via Tavily API
+        // 2. Melakukan pencarian real-time via Tavily API
         const tavilyRes = await fetch("https://api.tavily.com/search", {
             method: "POST",
             headers: {
@@ -33,7 +42,7 @@ export default async function handler(req, res) {
             searchContext = tavilyData.results.map(r => `Sumber URL: ${r.url}\nKonten: ${r.content}`).join("\n\n");
         }
 
-        // 2. Menyusun system prompt dengan hasil pencarian internet
+        // 3. Menyusun system prompt dengan hasil pencarian internet
         const systemPrompt = `Kamu adalah Orion AI, asisten pintar yang dilengkapi kemampuan pencarian internet secara langsung.
 Berikut adalah informasi hasil pencarian web terbaru untuk membantu menjawab pertanyaan pengguna:
 ${searchContext}
@@ -48,7 +57,7 @@ Aturan Utama:
             ...messages.map(m => ({ role: m.role, content: m.content }))
         ];
 
-        // 3. Mengirim data ke OpenRouter untuk diproses AI
+        // 4. Mengirim data ke OpenRouter untuk diproses AI
         const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: 'POST',
             headers: {
